@@ -10,16 +10,19 @@
 #include <QByteArray>
 #include <QVector>
 #include <QMap>
+#include <QThread>
+#include <QAtomicInt>
 
 struct FileEntry;
 
 struct Node {
     QVector<Node*> children;
     QByteArray name;
+    QByteArray hash;
     Node* parent;
 
     Node() {}
-    Node(QByteArray const& name, Node* parent) : name(name), parent(parent) {}
+    Node(QByteArray const& name, QByteArray const& hash, Node* parent) : name(name), hash(hash), parent(parent) {}
 };
 
 class SameFilesModel :public QAbstractItemModel
@@ -36,9 +39,32 @@ public:
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     int columnCount(const QModelIndex &parent = QModelIndex()) const override;
 
+public slots:
+    void add_file(Node* file);
+
+signals:
+    void scan_directory(QString const& directory);
+
 private:
     QMap<QByteArray, int> hash_to_id;
     QVector<Node*> grouped_files;
+    QThread worker_thread;
+};
+
+class HashingWorker : public QObject {
+    Q_OBJECT
+public:
+    HashingWorker();
+    ~HashingWorker();
+
+public slots:
+    void process(QString const& directory);
+
+signals:
+    void file_processed(Node* file);
+
+private:
+    QAtomicInt interrupt_flag;
 };
 
 #endif // SAMEFILESMODEL_H

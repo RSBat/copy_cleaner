@@ -4,33 +4,14 @@
 #include <QDirIterator>
 #include <QFile>
 
-SameFilesModel::SameFilesModel() : QAbstractItemModel(nullptr) {
-    QCryptographicHash hash(QCryptographicHash::Algorithm::Sha256);
+SameFilesModel::SameFilesModel() : QAbstractItemModel(nullptr), worker_thread() {
+    HashingWorker* worker = new HashingWorker();
+    worker->moveToThread(&worker_thread);
+    connect(this, &SameFilesModel::scan_directory, worker, &HashingWorker::process);
+    connect(worker, &HashingWorker::file_processed, this, &SameFilesModel::add_file);
+    worker_thread.start();
 
-    QDirIterator it("/home/rsbat/Downloads", QDir::Files | QDir::NoDotAndDotDot | QDir::NoSymLinks, QDirIterator::Subdirectories);
-    while (it.hasNext()) {
-        auto name = it.next();
-        QFile file(name);
-        file.open(QIODevice::ReadOnly);
-
-        hash.reset();
-        hash.addData(&file);
-        auto file_hash = hash.result().toHex();
-
-        auto pos = hash_to_id.find(file_hash);
-        if (pos == hash_to_id.end()) {
-            Node* group = new Node(file_hash, nullptr);
-            Node* file_node = new Node(name.toUtf8(), group);
-            group->children.push_back(file_node);
-
-            hash_to_id[file_hash] = grouped_files.size();
-            grouped_files.push_back(group);
-        } else {
-            Node* group = grouped_files[pos.value()];
-            Node* file_node = new Node(name.toUtf8(), group);
-            group->children.push_back(file_node);
-        }
-    }
+    emit scan_directory("/home/rsbat/Downloads");
 }
 
 SameFilesModel::~SameFilesModel() {
@@ -49,7 +30,15 @@ QVariant SameFilesModel::data(const QModelIndex &index, int role) const {
 }
 
 QVariant SameFilesModel::headerData(int section, Qt::Orientation orientation, int role) const {
-    return QVariant();
+    if (role != Qt::DisplayRole) {
+        return QVariant();
+    }
+
+    if (orientation != Qt::Horizontal) {
+        return QVariant();
+    }
+
+    return "Name";
 }
 
 QModelIndex SameFilesModel::index(int row, int column, const QModelIndex &parent) const {
@@ -82,4 +71,61 @@ int SameFilesModel::rowCount(const QModelIndex &parent) const {
 
 int SameFilesModel::columnCount(const QModelIndex &parent) const {
     return 1;
+}
+
+void SameFilesModel::add_file(Node* file) {
+
+    auto pos = hash_to_id.find(file->hash);
+    int parent_pos;
+    Node* group;
+
+    if (pos == hash_to_id.end()) {
+        group = new Node(file->hash, file->hash, nullptr);
+        parent_pos = grouped_files.size();
+        hash_to_id[file->hash] = parent_pos;
+
+        beginInsertRows(QModelIndex(), parent_pos, parent_pos);
+        grouped_files.push_back(group);
+        endInsertRows();
+    } else {
+        parent_pos = pos.value();
+        group = grouped_files[parent_pos];
+    }
+
+    file->parent = group;
+    beginInsertRows(index(parent_pos, 0, QModelIndex()), parent_pos, parent_pos);
+    group->children.push_back(file);
+    endInsertRows();
+}
+
+HashingWorker::HashingWorker() : interrupt_flag(0) {
+
+}
+
+HashingWorker::~HashingWorker() {
+
+}
+
+void HashingWorker::process(QString const& directory) {
+    interrupt_flag = 0;
+
+    QCryptographicHash hash(QCryptographicHash::Algorithm::Sha256);
+    QDirIterator it(directory, QDir::Files | QDir::NoDotAndDotDot | QDir::NoSymLinks, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        auto name = it.next();
+        QFile file(name);
+        file.open(QIODevice::ReadOnly);
+
+        hash.reset();
+        hash.addData(&file);
+        auto file_hash = hash.result().toHex();
+
+        Node* file_node = new Node(name.toUtf8(), file_hash, nullptr);
+        if (interrupt_flag == 0) {
+            emit file_processed(file_node);
+        } else {
+            delete file_node;
+            break;
+        }
+    }
 }
