@@ -1,24 +1,36 @@
 #include "samefilesmodel.h"
 
 #include <QCryptographicHash>
+#include <QDirIterator>
+#include <QFile>
 
 SameFilesModel::SameFilesModel() : QAbstractItemModel(nullptr) {
     QCryptographicHash hash(QCryptographicHash::Algorithm::Sha256);
 
-    hash.addData("hello", 5);
-    Node* group = new Node(hash.result().toHex(), nullptr);
-    group->children.push_back(new Node("file #1", group));
-    group->children.push_back(new Node("file #2", group));
-    group->children.push_back(new Node("file #3", group));
-    grouped_files.push_back(group);
+    QDirIterator it("/home/rsbat/Downloads", QDir::Files | QDir::NoDotAndDotDot | QDir::NoSymLinks, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        auto name = it.next();
+        QFile file(name);
+        file.open(QIODevice::ReadOnly);
 
-    hash.reset();
-    hash.addData("world", 5);
-    Node* group2 = new Node(hash.result().toHex(), nullptr);
-    group2->children.push_back(new Node("file #1", group2));
-    group2->children.push_back(new Node("file #2", group2));
-    group2->children.push_back(new Node("file #3", group2));
-    grouped_files.push_back(group2);
+        hash.reset();
+        hash.addData(&file);
+        auto file_hash = hash.result().toHex();
+
+        auto pos = hash_to_id.find(file_hash);
+        if (pos == hash_to_id.end()) {
+            Node* group = new Node(file_hash, nullptr);
+            Node* file_node = new Node(name.toUtf8(), group);
+            group->children.push_back(file_node);
+
+            hash_to_id[file_hash] = grouped_files.size();
+            grouped_files.push_back(group);
+        } else {
+            Node* group = grouped_files[pos.value()];
+            Node* file_node = new Node(name.toUtf8(), group);
+            group->children.push_back(file_node);
+        }
+    }
 }
 
 SameFilesModel::~SameFilesModel() {
@@ -37,7 +49,7 @@ QVariant SameFilesModel::data(const QModelIndex &index, int role) const {
 }
 
 QVariant SameFilesModel::headerData(int section, Qt::Orientation orientation, int role) const {
-    return QString();
+    return QVariant();
 }
 
 QModelIndex SameFilesModel::index(int row, int column, const QModelIndex &parent) const {
@@ -57,7 +69,7 @@ QModelIndex SameFilesModel::parent(const QModelIndex &index) const {
         return QModelIndex();
     }
 
-    int parents_row = hash_to_id[ptr->name];
+    int parents_row = hash_to_id[parent_ptr->name];
     return createIndex(parents_row, 0, grouped_files[parents_row]);
 }
 
