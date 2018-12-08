@@ -17,12 +17,13 @@ struct FileEntry;
 
 struct Node {
     QVector<Node*> children;
-    QByteArray name;
+    QString name;
     QByteArray hash;
     Node* parent;
+    bool isFile;
 
     Node() {}
-    Node(QByteArray const& name, QByteArray const& hash, Node* parent) : name(name), hash(hash), parent(parent) {}
+    Node(QString const& name, QByteArray const& hash) : name(name), hash(hash), parent(nullptr), isFile(true) {}
 };
 
 class SameFilesModel :public QAbstractItemModel

@@ -26,7 +26,11 @@ QVariant SameFilesModel::data(const QModelIndex &index, int role) const {
         return QVariant();
 
     auto ptr = static_cast<Node*>(index.internalPointer());
-    return QString(ptr->name);
+    if (ptr->isFile) {
+        return ptr->name;
+    } else {
+        return QString::fromStdString(std::to_string(ptr->children.size()) + " same files");
+    }
 }
 
 QVariant SameFilesModel::headerData(int section, Qt::Orientation orientation, int role) const {
@@ -58,7 +62,7 @@ QModelIndex SameFilesModel::parent(const QModelIndex &index) const {
         return QModelIndex();
     }
 
-    int parents_row = hash_to_id[parent_ptr->name];
+    int parents_row = hash_to_id[parent_ptr->hash];
     return createIndex(parents_row, 0, grouped_files[parents_row]);
 }
 
@@ -80,7 +84,8 @@ void SameFilesModel::add_file(Node* file) {
     Node* group;
 
     if (pos == hash_to_id.end()) {
-        group = new Node(file->hash, file->hash, nullptr);
+        group = new Node(file->hash, file->hash);
+        group->isFile = false;
         parent_pos = grouped_files.size();
         hash_to_id[file->hash] = parent_pos;
 
@@ -120,7 +125,7 @@ void HashingWorker::process(QString const& directory) {
         hash.addData(&file);
         auto file_hash = hash.result().toHex();
 
-        Node* file_node = new Node(name.toUtf8(), file_hash, nullptr);
+        Node* file_node = new Node(name, file_hash);
         if (interrupt_flag == 0) {
             emit file_processed(file_node);
         } else {
