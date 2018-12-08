@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QLabel>
 
 namespace Ui {
 class MainWindow;
@@ -16,11 +17,13 @@ public:
     ~MainWindow();
 
 public slots:
-    void set_progress_complete();
+    void set_progress_complete(int count);
     void set_progress_working();
+    void set_progress_update(int count);
 
 private:
     Ui::MainWindow *ui;
+    QLabel* total_label;
 };
 
 #endif // MAINWINDOW_H

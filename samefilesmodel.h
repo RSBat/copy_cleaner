@@ -42,9 +42,13 @@ public:
 
 public slots:
     void add_file(Node* file);
+    void no_more_files();
 
 signals:
     void scan_directory(QString const& directory);
+    void scan_started();
+    void scan_ended(int files_scanned);
+    void scan_update(int files_scanned);
 
 private:
     QMap<QByteArray, int> hash_to_id;
@@ -55,6 +59,7 @@ private:
     QMap<QByteArray, int> unique_id;
 
     qint64 maxTime;
+    int total_files;
 };
 
 class HashingWorker : public QObject {
@@ -68,6 +73,7 @@ public slots:
 
 signals:
     void file_processed(Node* file);
+    void scan_ended();
 
 private:
     QAtomicInt interrupt_flag;

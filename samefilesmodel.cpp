@@ -7,14 +7,16 @@
 
 #include <iostream>
 
-SameFilesModel::SameFilesModel() : QAbstractItemModel(nullptr), worker_thread(), unique_group(new Node("Unique files", QByteArray())), maxTime(0) {
+SameFilesModel::SameFilesModel() : QAbstractItemModel(nullptr), worker_thread(), unique_group(new Node("Unique files", QByteArray())), maxTime(0), total_files(0) {
     HashingWorker* worker = new HashingWorker();
     worker->moveToThread(&worker_thread);
     connect(this, &SameFilesModel::scan_directory, worker, &HashingWorker::process);
     connect(worker, &HashingWorker::file_processed, this, &SameFilesModel::add_file);
+    connect(worker, &HashingWorker::scan_ended, this, &SameFilesModel::no_more_files);
     worker_thread.start();
 
-    emit scan_directory("/home/rsbat");
+    emit scan_directory("/home/rsbat/Downloads");
+    emit scan_started();
 }
 
 SameFilesModel::~SameFilesModel() {
@@ -146,12 +148,19 @@ void SameFilesModel::add_file(Node* file) {
     group->children.push_back(file);
     endInsertRows();
 
+    total_files++;
+    emit scan_update(total_files);
+
     // for DEBUG
     auto timed = timer.nsecsElapsed();
     if (timed > maxTime) {
         maxTime = timed;
         std::cerr << maxTime << std::endl;
     }
+}
+
+void SameFilesModel::no_more_files() {
+    emit scan_ended(total_files);
 }
 
 HashingWorker::HashingWorker() : interrupt_flag(0) {
@@ -184,4 +193,6 @@ void HashingWorker::process(QString const& directory) {
             break;
         }
     }
+
+    emit scan_ended();
 }
