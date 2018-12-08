@@ -26,6 +26,26 @@ struct Node {
     Node(QString const& name, QByteArray const& hash) : name(name), hash(hash), parent(nullptr), isFile(true) {}
 };
 
+
+class HashingWorker : public QObject {
+    Q_OBJECT
+public:
+    HashingWorker();
+    ~HashingWorker();
+
+    void stop_scan();
+
+public slots:
+    void process(QString const& directory);
+
+signals:
+    void file_processed(Node* file);
+    void scan_ended();
+
+private:
+    QAtomicInt interrupt_flag;
+};
+
 class SameFilesModel :public QAbstractItemModel
 {
     Q_OBJECT
@@ -43,6 +63,8 @@ public:
 public slots:
     void add_file(Node* file);
     void no_more_files();
+    void start_scan(QString const& directory);
+    void stop_scan();
 
 signals:
     void scan_directory(QString const& directory);
@@ -54,29 +76,13 @@ private:
     QMap<QByteArray, int> hash_to_id;
     QVector<Node*> grouped_files;
     QThread worker_thread;
+    HashingWorker* worker;
 
     Node* unique_group;
     QMap<QByteArray, int> unique_id;
 
     qint64 maxTime;
     int total_files;
-};
-
-class HashingWorker : public QObject {
-    Q_OBJECT
-public:
-    HashingWorker();
-    ~HashingWorker();
-
-public slots:
-    void process(QString const& directory);
-
-signals:
-    void file_processed(Node* file);
-    void scan_ended();
-
-private:
-    QAtomicInt interrupt_flag;
 };
 
 #endif // SAMEFILESMODEL_H

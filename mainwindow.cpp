@@ -14,9 +14,14 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(model, &SameFilesModel::scan_started, this, &MainWindow::set_progress_working);
     connect(model, &SameFilesModel::scan_ended, this, &MainWindow::set_progress_complete);
     connect(model, &SameFilesModel::scan_update, this, &MainWindow::set_progress_update);
+    connect(this, &MainWindow::scan_directory, model, &SameFilesModel::start_scan);
+    connect(this, &MainWindow::abort_scan, model, &SameFilesModel::stop_scan);
 
     ui->progressBar->reset();
     statusBar()->addWidget(total_label);
+
+    connect(ui->btn_start, &QPushButton::clicked, this, &MainWindow::click_start);
+    connect(ui->btn_stop, &QPushButton::clicked, this, &MainWindow::click_stop);
 }
 
 MainWindow::~MainWindow()
@@ -33,12 +38,23 @@ void MainWindow::set_progress_complete(int count) {
 }
 
 void MainWindow::set_progress_working() {
-    ui->progressBar->setMinimum(0);
-    ui->progressBar->setMaximum(0);
-
-    total_label->setText("Files scanned: 0");
 }
 
 void MainWindow::set_progress_update(int count) {
     total_label->setText("Files scanned: " + QString::number(count));
+}
+
+void MainWindow::click_start() {
+    ui->progressBar->setMinimum(0);
+    ui->progressBar->setMaximum(0);
+
+    total_label->setText("Files scanned: 0");
+
+    emit scan_directory(ui->lineEdit->text());
+}
+
+void MainWindow::click_stop() {
+    emit abort_scan();
+    ui->progressBar->setMaximum(1);
+    ui->progressBar->reset();
 }
