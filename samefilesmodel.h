@@ -50,6 +50,11 @@ private:
     QMap<QByteArray, int> hash_to_id;
     QVector<Node*> grouped_files;
     QThread worker_thread;
+
+    Node* unique_group;
+    QMap<QByteArray, int> unique_id;
+
+    qint64 maxTime;
 };
 
 class HashingWorker : public QObject {

@@ -15,3 +15,14 @@ MainWindow::~MainWindow()
 {
     delete ui;
 }
+
+void MainWindow::set_progress_complete() {
+    ui->progressBar->setMinimum(0);
+    ui->progressBar->setMaximum(1);
+    ui->progressBar->setValue(1);
+}
+
+void MainWindow::set_progress_working() {
+    ui->progressBar->setMinimum(0);
+    ui->progressBar->setMaximum(0);
+}

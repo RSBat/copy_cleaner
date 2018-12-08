@@ -15,6 +15,10 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+public slots:
+    void set_progress_complete();
+    void set_progress_working();
+
 private:
     Ui::MainWindow *ui;
 };
