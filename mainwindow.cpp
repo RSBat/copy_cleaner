@@ -55,6 +55,6 @@ void MainWindow::click_start() {
 
 void MainWindow::click_stop() {
     emit abort_scan();
-    ui->progressBar->setMaximum(1);
+    ui->progressBar->setMaximum(1); // otherwise reset won't work
     ui->progressBar->reset();
 }

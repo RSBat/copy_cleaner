@@ -3,11 +3,14 @@
 #include <QCryptographicHash>
 #include <QDirIterator>
 #include <QFile>
-#include <QElapsedTimer>
-
 #include <iostream>
 
-SameFilesModel::SameFilesModel() : QAbstractItemModel(nullptr), worker_thread(), unique_group(new Node("Unique files", QByteArray())), maxTime(0), total_files(0) {
+SameFilesModel::SameFilesModel() :
+    QAbstractItemModel(nullptr),
+    worker_thread(),
+    unique_group(new Node("Unique files", QByteArray())),
+    total_files(0)
+{
     worker = new HashingWorker();
     worker->moveToThread(&worker_thread);
     connect(this, &SameFilesModel::scan_directory, worker, &HashingWorker::process);
@@ -17,7 +20,10 @@ SameFilesModel::SameFilesModel() : QAbstractItemModel(nullptr), worker_thread(),
 }
 
 SameFilesModel::~SameFilesModel() {
-
+    delete unique_group;
+    for (auto ptr : grouped_files) {
+        delete ptr;
+    }
 }
 
 QVariant SameFilesModel::data(const QModelIndex &index, int role) const {
@@ -92,10 +98,6 @@ int SameFilesModel::columnCount(const QModelIndex &parent) const {
 }
 
 void SameFilesModel::add_file(Node* file) {
-    // for DEBUG
-    QElapsedTimer timer;
-    timer.start();
-
     auto pos = hash_to_id.find(file->hash);
     int parent_pos;
     Node* group;
@@ -122,7 +124,6 @@ void SameFilesModel::add_file(Node* file) {
             int old_file_pos = unique_pos.value();
             if (old_file_pos >= unique_group->children.size()) { old_file_pos = unique_group->children.size() - 1; }
             while (unique_group->children[old_file_pos]->hash != file->hash) { old_file_pos--; }
-            std::cerr << unique_pos.value() - old_file_pos << std::endl; // for DEBUG
 
             Node* old_file = unique_group->children[old_file_pos];
             old_file->parent = group;
@@ -141,19 +142,15 @@ void SameFilesModel::add_file(Node* file) {
     }
 
     file->parent = group;
-    beginInsertRows(index(parent_pos, 0, QModelIndex()), parent_pos, parent_pos);
+    auto parent_index = index(parent_pos, 0, QModelIndex());
+    beginInsertRows(parent_index, group->children.size(), group->children.size());
     group->children.push_back(file);
     endInsertRows();
 
+    emit dataChanged(parent_index, parent_index);
+
     total_files++;
     emit scan_update(total_files);
-
-    // for DEBUG
-    auto timed = timer.nsecsElapsed();
-    if (timed > maxTime) {
-        maxTime = timed;
-        std::cerr << maxTime << std::endl;
-    }
 }
 
 void SameFilesModel::no_more_files() {
@@ -185,18 +182,13 @@ void SameFilesModel::stop_scan() {
     worker->stop_scan();
 }
 
-HashingWorker::HashingWorker() : interrupt_flag(0) {
+HashingWorker::HashingWorker() : interrupt_flag(0), hash(QCryptographicHash::Algorithm::Sha256) {}
 
-}
-
-HashingWorker::~HashingWorker() {
-
-}
+HashingWorker::~HashingWorker() {}
 
 void HashingWorker::process(QString const& directory) {
     interrupt_flag = 0;
 
-    QCryptographicHash hash(QCryptographicHash::Algorithm::Sha256);
     QDirIterator it(directory, QDir::Files | QDir::NoDotAndDotDot | QDir::NoSymLinks, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         auto name = it.next();

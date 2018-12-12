@@ -12,6 +12,7 @@
 #include <QMap>
 #include <QThread>
 #include <QAtomicInt>
+#include <QCryptographicHash>
 
 struct FileEntry;
 
@@ -23,7 +24,12 @@ struct Node {
     bool isFile;
 
     Node() {}
-    Node(QString const& name, QByteArray const& hash) : name(name), hash(hash), parent(nullptr), isFile(true) {}
+    Node(QString const& name, QByteArray const& hash) : children(), name(name), hash(hash), parent(nullptr), isFile(true) {}
+    ~Node() {
+        for (auto ptr: children) {
+            delete ptr;
+        }
+    }
 };
 
 
@@ -44,6 +50,7 @@ signals:
 
 private:
     QAtomicInt interrupt_flag;
+    QCryptographicHash hash;
 };
 
 class SameFilesModel :public QAbstractItemModel
@@ -81,7 +88,6 @@ private:
     Node* unique_group;
     QMap<QByteArray, int> unique_id;
 
-    qint64 maxTime;
     int total_files;
 };
 
