@@ -110,7 +110,7 @@ void SameFilesModel::add_file(Node* file) {
 
             unique_id[file->hash] = unique_group->children.size();
         } else {
-            group = new Node(file->hash, file->hash);
+            group = new Node(QString(), file->hash);
             group->isFile = false;
             parent_pos = grouped_files.size();
             hash_to_id[file->hash] = parent_pos;
@@ -147,7 +147,7 @@ void SameFilesModel::add_file(Node* file) {
     group->children.push_back(file);
     endInsertRows();
 
-    emit dataChanged(parent_index, parent_index);
+    emit dataChanged(parent_index, parent_index); // need to update group title
 
     total_files++;
     emit scan_update(total_files);
@@ -180,38 +180,4 @@ void SameFilesModel::start_scan(QString const& directory) {
 
 void SameFilesModel::stop_scan() {
     worker->stop_scan();
-}
-
-HashingWorker::HashingWorker() : interrupt_flag(0), hash(QCryptographicHash::Algorithm::Sha256) {}
-
-HashingWorker::~HashingWorker() {}
-
-void HashingWorker::process(QString const& directory) {
-    interrupt_flag = 0;
-
-    QDirIterator it(directory, QDir::Files | QDir::NoDotAndDotDot | QDir::NoSymLinks, QDirIterator::Subdirectories);
-    while (it.hasNext()) {
-        auto name = it.next();
-        QFile file(name);
-        file.open(QIODevice::ReadOnly);
-
-        hash.reset();
-        hash.addData(&file);
-        auto file_hash = hash.result().toHex();
-
-        Node* file_node = new Node(name, file_hash);
-        if (interrupt_flag == 0) {
-            emit file_processed(file_node);
-        } else {
-            std::cerr << "Worker stopped" << std::endl;
-            delete file_node;
-            return;
-        }
-    }
-
-    emit scan_ended();
-}
-
-void HashingWorker::stop_scan() {
-    interrupt_flag = 1;
 }

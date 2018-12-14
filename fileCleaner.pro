@@ -27,11 +27,13 @@ CONFIG += c++11
 SOURCES += \
         main.cpp \
         mainwindow.cpp \
-    samefilesmodel.cpp
+    samefilesmodel.cpp \
+    hashingworker.cpp
 
 HEADERS += \
         mainwindow.h \
-    samefilesmodel.h
+    samefilesmodel.h \
+    hashingworker.h
 
 FORMS += \
         mainwindow.ui

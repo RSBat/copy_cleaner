@@ -5,8 +5,7 @@
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::MainWindow),
-    total_label(new QLabel)
+    ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
     SameFilesModel* model = new SameFilesModel();
@@ -18,6 +17,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this, &MainWindow::abort_scan, model, &SameFilesModel::stop_scan);
 
     ui->progressBar->reset();
+
+    total_label = new QLabel(statusBar());
     statusBar()->addWidget(total_label);
 
     connect(ui->btn_start, &QPushButton::clicked, this, &MainWindow::click_start);
