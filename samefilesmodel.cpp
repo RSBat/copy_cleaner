@@ -34,7 +34,9 @@ QVariant SameFilesModel::data(const QModelIndex &index, int role) const {
         return QVariant();
 
     auto ptr = static_cast<Node*>(index.internalPointer());
-    if (ptr->isFile) {
+    if (ptr == unique_group) {
+        return QString::number(ptr->children.size()) + " unique files";
+    } else if (ptr->isFile) {
         return ptr->name;
     } else {
         return QString::number(ptr->children.size()) + " same files";

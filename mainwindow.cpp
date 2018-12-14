@@ -22,7 +22,10 @@ MainWindow::MainWindow(QWidget *parent) :
     statusBar()->addWidget(total_label);
 
     connect(ui->btn_start, &QPushButton::clicked, this, &MainWindow::click_start);
+    connect(ui->lineEdit, &QLineEdit::returnPressed, this, &MainWindow::click_start);
     connect(ui->btn_stop, &QPushButton::clicked, this, &MainWindow::click_stop);
+
+    ui->btn_stop->setEnabled(false);
 }
 
 MainWindow::~MainWindow()
@@ -34,6 +37,9 @@ void MainWindow::set_progress_complete(int count) {
     ui->progressBar->setMinimum(0);
     ui->progressBar->setMaximum(1);
     ui->progressBar->setValue(1);
+
+    ui->btn_start->setEnabled(true);
+    ui->btn_stop->setEnabled(false);
 
     total_label->setText("Files scanned: " + QString::number(count));
 }
@@ -50,6 +56,9 @@ void MainWindow::click_start() {
     ui->progressBar->setMaximum(0);
 
     total_label->setText("Files scanned: 0");
+    ui->btn_start->setEnabled(false);
+    ui->btn_stop->setEnabled(true);
+    ui->lineEdit->setEnabled(false);
 
     emit scan_directory(ui->lineEdit->text());
 }
@@ -58,4 +67,8 @@ void MainWindow::click_stop() {
     emit abort_scan();
     ui->progressBar->setMaximum(1); // otherwise reset won't work
     ui->progressBar->reset();
+
+    ui->btn_start->setEnabled(true);
+    ui->btn_stop->setEnabled(false);
+    ui->lineEdit->setEnabled(true);
 }
