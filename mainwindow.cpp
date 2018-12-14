@@ -6,6 +6,7 @@
 #include <QDesktopServices>
 #include <QFileInfo>
 #include <QUrl>
+#include <QFileDialog>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -33,6 +34,12 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->btn_start, &QPushButton::clicked, this, &MainWindow::click_start);
     connect(ui->lineEdit, &QLineEdit::returnPressed, this, &MainWindow::click_start);
     connect(ui->btn_stop, &QPushButton::clicked, this, &MainWindow::click_stop);
+
+    ui->btn_dir_dialog->setIcon(QIcon::fromTheme("document-open"));
+    connect(ui->btn_dir_dialog, &QPushButton::clicked, this, [this](){
+        QString tmp = QFileDialog::getExistingDirectory(this, "Directory to scan");
+        this->ui->lineEdit->setText(tmp);
+    });
 
     ui->btn_stop->setEnabled(false);
 
