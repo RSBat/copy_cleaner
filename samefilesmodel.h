@@ -53,6 +53,8 @@ private:
     QMap<QByteArray, int> unique_id;
 
     int total_files;
+    int rehashing_files;
+    bool notify_ended;
 
     Node* get_and_remove_file_from_unique(QMap<QByteArray, int>::iterator const&);
     void add_file_to_group(Node* file, Node* group, int parent_pos);

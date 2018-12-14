@@ -9,7 +9,9 @@ SameFilesModel::SameFilesModel() :
     QAbstractItemModel(nullptr),
     worker_thread(),
     unique_group(new Node("Unique files", -1)),
-    total_files(0)
+    total_files(0),
+    rehashing_files(0),
+    notify_ended(false)
 {
     unique_group->isFile = false;
     worker = new HashingWorker();
@@ -133,6 +135,7 @@ void SameFilesModel::add_file_to_group(Node* file, Node* group, int parent_pos) 
 
 void SameFilesModel::add_file(Node* file) {
     if (file->hasHash) {
+        rehashing_files--;
         auto pos = hash_to_id.find(file->hash);
         int parent_pos;
         Node* group;
@@ -169,6 +172,10 @@ void SameFilesModel::add_file(Node* file) {
 
         total_files++;
         emit scan_update(total_files);
+
+        if (notify_ended && rehashing_files == 0) {
+            emit scan_ended(total_files);
+        }
     } else {
         auto size_it = size_to_ptr.find(file->size);
         if (size_it == size_to_ptr.end()) {
@@ -184,6 +191,7 @@ void SameFilesModel::add_file(Node* file) {
             emit scan_update(total_files);
         } else {
             emit calculate_hash(file);
+            rehashing_files++;
 
             auto ptr = size_it.value();
             if (ptr != nullptr) {
@@ -191,6 +199,8 @@ void SameFilesModel::add_file(Node* file) {
                 get_and_remove_file_from_unique(unique_pos);
 
                 emit calculate_hash(ptr);
+                total_files--;
+                rehashing_files++;
 
                 size_to_ptr[ptr->size] = nullptr;
             }
@@ -200,7 +210,11 @@ void SameFilesModel::add_file(Node* file) {
 }
 
 void SameFilesModel::no_more_files() {
-    emit scan_ended(total_files);
+    if (rehashing_files == 0) {
+        emit scan_ended(total_files);
+    } else {
+        notify_ended = true;
+    }
 }
 
 void SameFilesModel::start_scan(QString const& directory) {
@@ -220,6 +234,8 @@ void SameFilesModel::start_scan(QString const& directory) {
     size_to_ptr.clear();
 
     total_files = 0;
+    rehashing_files = 0;
+    notify_ended = false;
     endResetModel();
 
     emit scan_directory(directory);
