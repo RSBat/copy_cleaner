@@ -8,12 +8,14 @@
 SameFilesModel::SameFilesModel() :
     QAbstractItemModel(nullptr),
     worker_thread(),
-    unique_group(new Node("Unique files", QByteArray())),
+    unique_group(new Node("Unique files", -1)),
     total_files(0)
 {
+    unique_group->isFile = false;
     worker = new HashingWorker();
     worker->moveToThread(&worker_thread);
     connect(this, &SameFilesModel::scan_directory, worker, &HashingWorker::process);
+    connect(this, &SameFilesModel::calculate_hash, worker, &HashingWorker::calc_hash);
     connect(worker, &HashingWorker::file_processed, this, &SameFilesModel::add_file);
     connect(worker, &HashingWorker::scan_ended, this, &SameFilesModel::no_more_files);
     worker_thread.start();
@@ -103,50 +105,23 @@ int SameFilesModel::columnCount(const QModelIndex &parent) const {
     return 1;
 }
 
-void SameFilesModel::add_file(Node* file) {
-    auto pos = hash_to_id.find(file->hash);
-    int parent_pos;
-    Node* group;
+Node* SameFilesModel::get_and_remove_file_from_unique(const QMap<QByteArray, int>::iterator &it) {
+    // move file from unique to group
+    // some files in front of us could be deleted, need to recalculate position
+    int old_file_pos = it.value();
+    if (old_file_pos >= unique_group->children.size()) { old_file_pos = unique_group->children.size() - 1; }
+    while (unique_group->children[old_file_pos]->hash != it.key()) { old_file_pos--; }
 
-    if (pos == hash_to_id.end()) {
-        auto unique_pos = unique_id.find(file->hash);
-        if (unique_pos == unique_id.end()) {
-            group = unique_group;
-            parent_pos = grouped_files.size();
+    Node* old_file = unique_group->children[old_file_pos];
+    beginRemoveRows(index(grouped_files.size(), 0, QModelIndex()), old_file_pos, old_file_pos);
+    unique_group->children.erase(unique_group->children.begin() + old_file_pos);
+    unique_id.erase(it);
+    endRemoveRows();
 
-            unique_id[file->hash] = unique_group->children.size();
-        } else {
-            group = new Node(QString(), file->hash);
-            group->isFile = false;
-            parent_pos = grouped_files.size();
-            hash_to_id[file->hash] = parent_pos;
+    return old_file;
+}
 
-            beginInsertRows(QModelIndex(), parent_pos, parent_pos);
-            grouped_files.push_back(group);
-            endInsertRows();
-
-            // move file from unique to group
-            // some files in front of us could be deleted, need to recalculate position
-            int old_file_pos = unique_pos.value();
-            if (old_file_pos >= unique_group->children.size()) { old_file_pos = unique_group->children.size() - 1; }
-            while (unique_group->children[old_file_pos]->hash != file->hash) { old_file_pos--; }
-
-            Node* old_file = unique_group->children[old_file_pos];
-            old_file->parent = group;
-            beginRemoveRows(index(grouped_files.size(), 0, QModelIndex()), old_file_pos, old_file_pos);
-            unique_group->children.erase(unique_group->children.begin() + old_file_pos);
-            unique_id.erase(unique_pos);
-            endRemoveRows();
-
-            beginInsertRows(index(parent_pos, 0, QModelIndex()), 0, 0);
-            group->children.push_back(old_file);
-            endInsertRows();
-        }
-    } else {
-        parent_pos = pos.value();
-        group = grouped_files[parent_pos];
-    }
-
+void SameFilesModel::add_file_to_group(Node* file, Node* group, int parent_pos) {
     file->parent = group;
     auto parent_index = index(parent_pos, 0, QModelIndex());
     beginInsertRows(parent_index, group->children.size(), group->children.size());
@@ -154,9 +129,74 @@ void SameFilesModel::add_file(Node* file) {
     endInsertRows();
 
     emit dataChanged(parent_index, parent_index); // need to update group title
+}
 
-    total_files++;
-    emit scan_update(total_files);
+void SameFilesModel::add_file(Node* file) {
+    if (file->hasHash) {
+        auto pos = hash_to_id.find(file->hash);
+        int parent_pos;
+        Node* group;
+
+        if (pos == hash_to_id.end()) {
+            auto unique_pos = unique_id.find(file->hash);
+            if (unique_pos == unique_id.end()) {
+                group = unique_group;
+                parent_pos = grouped_files.size();
+
+                unique_id[file->hash] = unique_group->children.size();
+            } else {
+                group = new Node(QString(), file->size);
+                group->isFile = false;
+                group->hash = file->hash;
+                group->hasHash = true;
+
+                parent_pos = grouped_files.size();
+                hash_to_id[file->hash] = parent_pos;
+
+                beginInsertRows(QModelIndex(), parent_pos, parent_pos);
+                grouped_files.push_back(group);
+                endInsertRows();
+
+                auto old_file = get_and_remove_file_from_unique(unique_pos);
+                add_file_to_group(old_file, group, parent_pos);
+            }
+        } else {
+            parent_pos = pos.value();
+            group = grouped_files[parent_pos];
+        }
+
+        add_file_to_group(file, group, parent_pos);
+
+        total_files++;
+        emit scan_update(total_files);
+    } else {
+        auto size_it = size_to_ptr.find(file->size);
+        if (size_it == size_to_ptr.end()) {
+            size_to_ptr[file->size] = file;
+
+            auto group = unique_group;
+            auto parent_pos = grouped_files.size();
+
+            unique_id[file->hash] = unique_group->children.size();
+            add_file_to_group(file, group, parent_pos);
+
+            total_files++;
+            emit scan_update(total_files);
+        } else {
+            emit calculate_hash(file);
+
+            auto ptr = size_it.value();
+            if (ptr != nullptr) {
+                auto unique_pos = unique_id.find(ptr->hash);
+                get_and_remove_file_from_unique(unique_pos);
+
+                emit calculate_hash(ptr);
+
+                size_to_ptr[ptr->size] = nullptr;
+            }
+        }
+    }
+
 }
 
 void SameFilesModel::no_more_files() {
@@ -177,6 +217,7 @@ void SameFilesModel::start_scan(QString const& directory) {
     }
     grouped_files.clear();
     hash_to_id.clear();
+    size_to_ptr.clear();
 
     total_files = 0;
     endResetModel();

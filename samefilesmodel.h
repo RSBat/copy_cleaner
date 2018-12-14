@@ -40,9 +40,11 @@ signals:
     void scan_directory(QString const& directory);
     void scan_ended(int files_scanned);
     void scan_update(int files_scanned);
+    void calculate_hash(Node* file);
 
 private:
     QMap<QByteArray, int> hash_to_id;
+    QMap<qint64, Node*> size_to_ptr;
     QVector<Node*> grouped_files;
     QThread worker_thread;
     HashingWorker* worker;
@@ -51,6 +53,9 @@ private:
     QMap<QByteArray, int> unique_id;
 
     int total_files;
+
+    Node* get_and_remove_file_from_unique(QMap<QByteArray, int>::iterator const&);
+    void add_file_to_group(Node* file, Node* group, int parent_pos);
 };
 
 #endif // SAMEFILESMODEL_H

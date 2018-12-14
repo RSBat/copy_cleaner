@@ -9,11 +9,13 @@ struct Node {
     QVector<Node*> children;
     QString name;
     QByteArray hash;
+    qint64 size;
     Node* parent;
     bool isFile;
+    bool hasHash;
 
     Node() {}
-    Node(QString const& name, QByteArray const& hash) : children(), name(name), hash(hash), parent(nullptr), isFile(true) {}
+    Node(QString const& name, qint64 const& size) : children(), name(name), hash(QString::number(size).toUtf8()), size(size), parent(nullptr), isFile(true), hasHash(false) {}
     ~Node() {
         for (auto ptr: children) {
             delete ptr;
@@ -31,9 +33,11 @@ public:
 
 public slots:
     void process(QString const& directory);
+    void calc_hash(Node* file);
 
 signals:
     void file_processed(Node* file);
+    void hash_calculated(Node* file);
     void scan_ended();
 
 private:
