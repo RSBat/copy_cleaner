@@ -96,8 +96,13 @@ void MainWindow::getContextMenu(QPoint const& pos) {
     QString filename = ptr->name;
 
     QMenu* menu = new QMenu(ui->treeView);
-    QAction* act_open = menu->addAction("Open folder");
+    QAction* act_open = menu->addAction("Open file");
     connect(act_open, &QAction::triggered, this, [filename](){
+        QDesktopServices::openUrl(QUrl(filename));
+    });
+
+    QAction* act_folder = menu->addAction("Open folder");
+    connect(act_folder, &QAction::triggered, this, [filename](){
         QFileInfo info(filename);
         QDesktopServices::openUrl(QUrl(info.absolutePath())); // or info.path() because filename includes absolute path
     });
