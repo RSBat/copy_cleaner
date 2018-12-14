@@ -33,10 +33,11 @@ public slots:
     void no_more_files();
     void start_scan(QString const& directory);
     void stop_scan();
+    void delete_file(QModelIndex const& index);
+    void delete_same(QModelIndex const& index);
 
 signals:
     void scan_directory(QString const& directory);
-    void scan_started();
     void scan_ended(int files_scanned);
     void scan_update(int files_scanned);
 

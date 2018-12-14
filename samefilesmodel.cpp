@@ -60,6 +60,10 @@ QVariant SameFilesModel::headerData(int section, Qt::Orientation orientation, in
 }
 
 QModelIndex SameFilesModel::index(int row, int column, const QModelIndex &parent) const {
+    if (!hasIndex(row, column, parent)) {
+        return QModelIndex();
+    }
+
     if (!parent.isValid()) {
         if (row == grouped_files.size()) {
             return createIndex(row, column, unique_group);
@@ -177,9 +181,61 @@ void SameFilesModel::start_scan(QString const& directory) {
     endResetModel();
 
     emit scan_directory(directory);
-    emit scan_started();
 }
 
 void SameFilesModel::stop_scan() {
     worker->stop_scan();
+}
+
+void SameFilesModel::delete_file(QModelIndex const& index) {
+    if (!index.isValid()) { return; }
+
+    auto ptr = static_cast<Node*>(index.internalPointer());
+    if (!ptr->isFile) { return; }
+
+    beginRemoveRows(index.parent(), index.row(), index.row());
+    QFile::remove(ptr->name);
+    ptr->parent->children.erase(ptr->parent->children.begin() + index.row());
+    delete ptr;
+    endRemoveRows();
+}
+
+void SameFilesModel::delete_same(QModelIndex const& index) {
+    if (!index.isValid()) { return; }
+
+    auto ptr = static_cast<Node*>(index.internalPointer());
+    auto parent_ptr = ptr->parent;
+    if (!ptr->isFile) { return; }
+
+    auto parent_index = index.parent();
+
+    beginRemoveRows(parent_index, 0, parent_ptr->children.size());
+    while (!parent_ptr->children.empty()) {
+        auto tmp = parent_ptr->children.back();
+        parent_ptr->children.pop_back();
+        if (tmp != ptr) {
+            QFile::remove(tmp->name);
+            delete tmp;
+        }
+    }
+    endRemoveRows();
+
+    beginRemoveRows(QModelIndex(), parent_index.row(), parent_index.row());
+    grouped_files.erase(grouped_files.begin() + parent_index.row());
+    delete parent_ptr;
+    endRemoveRows();
+
+    auto iter = hash_to_id.find(ptr->hash);
+    hash_to_id.erase(iter);
+    for (auto& x : hash_to_id) {
+        if (x > parent_index.row()) {
+            x--;
+        }
+    }
+
+    beginInsertRows(this->index(rowCount() - 1, 0, QModelIndex()), unique_group->children.size(), unique_group->children.size());
+    ptr->parent = unique_group;
+    unique_group->children.push_back(ptr);
+    endInsertRows();
+
 }
