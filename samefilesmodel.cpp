@@ -164,6 +164,7 @@ void SameFilesModel::no_more_files() {
 }
 
 void SameFilesModel::start_scan(QString const& directory) {
+    // cleanup
     beginResetModel();
     for (auto ptr: unique_group->children) {
         delete ptr;
@@ -187,28 +188,67 @@ void SameFilesModel::stop_scan() {
     worker->stop_scan();
 }
 
+// delete file
+// if only one file remains in group, move that file to unique
 void SameFilesModel::delete_file(QModelIndex const& index) {
     if (!index.isValid()) { return; }
 
     auto ptr = static_cast<Node*>(index.internalPointer());
+    auto parent_ptr = ptr->parent;
+    auto parent_index = index.parent();
     if (!ptr->isFile) { return; }
 
-    beginRemoveRows(index.parent(), index.row(), index.row());
+    // delete file
+    beginRemoveRows(parent_index, index.row(), index.row());
     QFile::remove(ptr->name);
-    ptr->parent->children.erase(ptr->parent->children.begin() + index.row());
+    parent_ptr->children.erase(parent_ptr->children.begin() + index.row());
     delete ptr;
     endRemoveRows();
+
+    if (parent_ptr == unique_group) { return; }
+    if (parent_ptr->children.size() > 1) { return; }
+
+    // delete other child
+    beginRemoveRows(parent_index, 0, 0);
+    auto tmp = parent_ptr->children.back();
+    parent_ptr->children.clear();
+    endRemoveRows();
+
+    // delete parent
+    beginRemoveRows(QModelIndex(), parent_index.row(), parent_index.row());
+    grouped_files.erase(grouped_files.begin() + parent_index.row());
+    delete parent_ptr;
+    endRemoveRows();
+
+    // fix indexes
+    auto iter = hash_to_id.find(parent_ptr->hash);
+    hash_to_id.erase(iter);
+    for (auto& x : hash_to_id) {
+        if (x > parent_index.row()) {
+            x--;
+        }
+    }
+
+    // move other child to unique
+    beginInsertRows(this->index(rowCount() - 1, 0, QModelIndex()), unique_group->children.size(), unique_group->children.size());
+    tmp->parent = unique_group;
+    unique_group->children.push_back(tmp);
+    endInsertRows();
 }
 
+// deletes all files that have same hash as ours except our
+// and moves it to unique files
 void SameFilesModel::delete_same(QModelIndex const& index) {
     if (!index.isValid()) { return; }
 
     auto ptr = static_cast<Node*>(index.internalPointer());
     auto parent_ptr = ptr->parent;
     if (!ptr->isFile) { return; }
+    if (parent_ptr == unique_group) { return; }
 
     auto parent_index = index.parent();
 
+    // delete other files
     beginRemoveRows(parent_index, 0, parent_ptr->children.size());
     while (!parent_ptr->children.empty()) {
         auto tmp = parent_ptr->children.back();
@@ -220,11 +260,13 @@ void SameFilesModel::delete_same(QModelIndex const& index) {
     }
     endRemoveRows();
 
+    // delete parent
     beginRemoveRows(QModelIndex(), parent_index.row(), parent_index.row());
     grouped_files.erase(grouped_files.begin() + parent_index.row());
     delete parent_ptr;
     endRemoveRows();
 
+    // actual position changed, recalculate them
     auto iter = hash_to_id.find(ptr->hash);
     hash_to_id.erase(iter);
     for (auto& x : hash_to_id) {
@@ -233,6 +275,7 @@ void SameFilesModel::delete_same(QModelIndex const& index) {
         }
     }
 
+    // move file to unique
     beginInsertRows(this->index(rowCount() - 1, 0, QModelIndex()), unique_group->children.size(), unique_group->children.size());
     ptr->parent = unique_group;
     unique_group->children.push_back(ptr);
