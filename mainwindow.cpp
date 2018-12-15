@@ -51,14 +51,20 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+void MainWindow::enable_buttons(bool state) {
+    ui->btn_start->setEnabled(state);
+    ui->lineEdit->setEnabled(state);
+    ui->btn_dir_dialog->setEnabled(state);
+
+    ui->btn_stop->setEnabled(!state);
+}
+
 void MainWindow::set_progress_complete(int count) {
     ui->progressBar->setMinimum(0);
     ui->progressBar->setMaximum(1);
     ui->progressBar->setValue(1);
 
-    ui->btn_start->setEnabled(true);
-    ui->btn_stop->setEnabled(false);
-    ui->lineEdit->setEnabled(true);
+    enable_buttons(true);
 
     total_label->setText("Files scanned: " + QString::number(count));
 
@@ -74,9 +80,7 @@ void MainWindow::click_start() {
     ui->progressBar->setMaximum(0);
 
     total_label->setText("Files scanned: 0");
-    ui->btn_start->setEnabled(false);
-    ui->btn_stop->setEnabled(true);
-    ui->lineEdit->setEnabled(false);
+    enable_buttons(false);
 
     emit scan_directory(ui->lineEdit->text());
 
@@ -88,9 +92,7 @@ void MainWindow::click_stop() {
     ui->progressBar->setMaximum(1); // otherwise reset won't work
     ui->progressBar->reset();
 
-    ui->btn_start->setEnabled(true);
-    ui->btn_stop->setEnabled(false);
-    ui->lineEdit->setEnabled(true);
+    enable_buttons(true);
 
     isScanning = false;
 }
@@ -115,6 +117,7 @@ void MainWindow::getContextMenu(QPoint const& pos) {
     });
 
     QAction* act_delete = menu->addAction("Delete file");
+    act_delete->setShortcut(QKeySequence::Delete);
     connect(act_delete, &QAction::triggered, this, [this, index]() {
         emit this->delete_file(index);
     });

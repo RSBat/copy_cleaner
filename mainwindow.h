@@ -33,6 +33,8 @@ private:
     bool isScanning;
     Ui::MainWindow *ui;
     QLabel* total_label;
+
+    void enable_buttons(bool state);
 };
 
 #endif // MAINWINDOW_H
