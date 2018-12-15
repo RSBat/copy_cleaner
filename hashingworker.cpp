@@ -2,12 +2,13 @@
 
 #include <QDirIterator>
 
-HashingWorker::HashingWorker(QObject *parent) : interrupt_flag(0), hash(QCryptographicHash::Algorithm::Sha1) {}
+HashingWorker::HashingWorker(QObject *parent) : interrupt_flag(0), hash(QCryptographicHash::Algorithm::Sha1), files_with_errors(-1) {}
 
 HashingWorker::~HashingWorker() {}
 
 void HashingWorker::process(QString const& directory) {
     interrupt_flag = 0;
+    files_with_errors = -1;
 
     QDirIterator it(directory, QDir::Files | QDir::NoDotAndDotDot | QDir::NoSymLinks, QDirIterator::Subdirectories);
     while (it.hasNext()) {
@@ -15,6 +16,13 @@ void HashingWorker::process(QString const& directory) {
         QFile file(name);
 
         Node* file_node = new Node(name, file.size());
+
+        if (!(file.permissions() & QFileDevice::Permission::ReadUser)) {
+            file_node->hash = QString::number(files_with_errors).toUtf8();
+            file_node->hasHash = true;
+            files_with_errors--;
+        }
+
         if (interrupt_flag == 0) {
             emit file_processed(file_node);
         } else {

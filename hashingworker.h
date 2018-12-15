@@ -43,6 +43,7 @@ signals:
 private:
     QAtomicInt interrupt_flag;
     QCryptographicHash hash;
+    int files_with_errors;
 };
 
 #endif // HASHINGWORKER_H
