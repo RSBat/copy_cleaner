@@ -11,13 +11,14 @@
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     isScanning(false),
-    ui(new Ui::MainWindow)
+    ui(new Ui::MainWindow),
+    no_directory_message(new QErrorMessage(this))
 {
     ui->setupUi(this);
     SameFilesModel* model = new SameFilesModel();
     ui->treeView->setModel(model);
-    ui->treeView->header()->setSectionResizeMode(QHeaderView::Stretch);
-    ui->treeView->header()->setStretchLastSection(false);
+    //ui->treeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents); // looks ugly
+    //ui->treeView->header()->setStretchLastSection(false);
     connect(model, &SameFilesModel::scan_ended, this, &MainWindow::set_progress_complete);
     connect(model, &SameFilesModel::scan_update, this, &MainWindow::set_progress_update);
     connect(this, &MainWindow::scan_directory, model, &SameFilesModel::start_scan);
@@ -78,15 +79,20 @@ void MainWindow::set_progress_update(int count) {
 }
 
 void MainWindow::click_start() {
-    ui->progressBar->setMinimum(0);
-    ui->progressBar->setMaximum(0);
+    QString dir = ui->lineEdit->text();
 
-    total_label->setText("Files scanned: 0");
-    enable_buttons(false);
+    if (QDir(dir).exists()) {
+        ui->progressBar->setMinimum(0);
+        ui->progressBar->setMaximum(0);
 
-    emit scan_directory(ui->lineEdit->text());
+        total_label->setText("Files scanned: 0");
+        enable_buttons(false);
 
-    isScanning = true;
+        emit scan_directory(ui->lineEdit->text());
+        isScanning = true;
+    } else {
+        no_directory_message->showMessage("No such directory");
+    }
 }
 
 void MainWindow::click_stop() {

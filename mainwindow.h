@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QLabel>
+#include <QErrorMessage>
 
 namespace Ui {
 class MainWindow;
@@ -33,6 +34,7 @@ private:
     bool isScanning;
     Ui::MainWindow *ui;
     QLabel* total_label;
+    QErrorMessage* no_directory_message;
 
     void enable_buttons(bool state);
 };
