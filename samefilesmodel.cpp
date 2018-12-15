@@ -174,7 +174,7 @@ void SameFilesModel::add_file(Node* file) {
 
         if (notify_ended && rehashing_files == 0) {
             emit scan_ended(total_files);
-            qDebug() << timer.elapsed() << "\n";
+            qDebug() << timer.elapsed();
         }
     } else {
         auto size_it = size_to_ptr.find(file->size);
@@ -212,7 +212,7 @@ void SameFilesModel::add_file(Node* file) {
 void SameFilesModel::no_more_files() {
     if (rehashing_files == 0) {
         emit scan_ended(total_files);
-        qDebug() << timer.elapsed() << "\n";
+        qDebug() << timer.elapsed();
     } else {
         notify_ended = true;
     }
@@ -245,7 +245,7 @@ void SameFilesModel::start_scan(QString const& directory) {
 
 void SameFilesModel::stop_scan() {
     worker->stop_scan();
-    qDebug() << timer.elapsed() << "\n";
+    qDebug() << timer.elapsed();
 }
 
 // delete file
