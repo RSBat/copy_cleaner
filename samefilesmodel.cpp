@@ -1,9 +1,6 @@
 #include "samefilesmodel.h"
 
-#include <QCryptographicHash>
-#include <QDirIterator>
 #include <QFile>
-#include <iostream>
 
 SameFilesModel::SameFilesModel() :
     QAbstractItemModel(nullptr),

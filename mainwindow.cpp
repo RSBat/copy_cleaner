@@ -16,6 +16,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     SameFilesModel* model = new SameFilesModel();
     ui->treeView->setModel(model);
+    ui->treeView->header()->setSectionResizeMode(QHeaderView::Stretch);
+    ui->treeView->header()->setStretchLastSection(false);
     connect(model, &SameFilesModel::scan_ended, this, &MainWindow::set_progress_complete);
     connect(model, &SameFilesModel::scan_update, this, &MainWindow::set_progress_update);
     connect(this, &MainWindow::scan_directory, model, &SameFilesModel::start_scan);
@@ -43,7 +45,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     ui->btn_stop->setEnabled(false);
 
-    ui->lineEdit->setText("/home/rsbat/Downloads");
+    ui->lineEdit->setText(QDir::currentPath());
 }
 
 MainWindow::~MainWindow()
@@ -117,7 +119,6 @@ void MainWindow::getContextMenu(QPoint const& pos) {
     });
 
     QAction* act_delete = menu->addAction("Delete file");
-    act_delete->setShortcut(QKeySequence::Delete);
     connect(act_delete, &QAction::triggered, this, [this, index]() {
         emit this->delete_file(index);
     });

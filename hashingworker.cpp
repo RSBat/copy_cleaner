@@ -13,7 +13,6 @@ void HashingWorker::process(QString const& directory) {
     while (it.hasNext()) {
         auto name = it.next();
         QFile file(name);
-        file.open(QIODevice::ReadOnly);
 
         Node* file_node = new Node(name, file.size());
         if (interrupt_flag == 0) {

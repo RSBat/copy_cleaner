@@ -1,12 +1,7 @@
 #ifndef SAMEFILESMODEL_H
 #define SAMEFILESMODEL_H
 
-#include <hashingworker.h>
-
-#include <map>
-#include <string>
-#include <unordered_map>
-#include <vector>
+#include "hashingworker.h"
 
 #include <QAbstractItemModel>
 #include <QByteArray>
