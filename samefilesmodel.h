@@ -8,6 +8,7 @@
 #include <QVector>
 #include <QMap>
 #include <QThread>
+#include <QElapsedTimer>
 
 class SameFilesModel :public QAbstractItemModel
 {
@@ -53,6 +54,8 @@ private:
 
     Node* get_and_remove_file_from_unique(QMap<QByteArray, int>::iterator const&);
     void add_file_to_group(Node* file, Node* group, int parent_pos);
+
+    QElapsedTimer timer;
 };
 
 #endif // SAMEFILESMODEL_H

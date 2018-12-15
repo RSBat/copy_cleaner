@@ -1,6 +1,7 @@
 #include "samefilesmodel.h"
 
 #include <QFile>
+#include <QDebug>
 
 SameFilesModel::SameFilesModel() :
     QAbstractItemModel(nullptr),
@@ -8,7 +9,8 @@ SameFilesModel::SameFilesModel() :
     unique_group(new Node("Unique files", -1)),
     total_files(0),
     rehashing_files(0),
-    notify_ended(false)
+    notify_ended(false),
+    timer()
 {
     unique_group->isFile = false;
     worker = new HashingWorker();
@@ -172,6 +174,7 @@ void SameFilesModel::add_file(Node* file) {
 
         if (notify_ended && rehashing_files == 0) {
             emit scan_ended(total_files);
+            qDebug() << timer.elapsed() << "\n";
         }
     } else {
         auto size_it = size_to_ptr.find(file->size);
@@ -209,6 +212,7 @@ void SameFilesModel::add_file(Node* file) {
 void SameFilesModel::no_more_files() {
     if (rehashing_files == 0) {
         emit scan_ended(total_files);
+        qDebug() << timer.elapsed() << "\n";
     } else {
         notify_ended = true;
     }
@@ -235,11 +239,13 @@ void SameFilesModel::start_scan(QString const& directory) {
     notify_ended = false;
     endResetModel();
 
+    timer.restart();
     emit scan_directory(directory);
 }
 
 void SameFilesModel::stop_scan() {
     worker->stop_scan();
+    qDebug() << timer.elapsed() << "\n";
 }
 
 // delete file
