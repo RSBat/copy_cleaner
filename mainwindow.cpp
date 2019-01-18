@@ -1,12 +1,13 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-#include "samefilesmodel.h"
+#include "fileindexingmodel.h"
 
 #include <QDesktopServices>
 #include <QFileInfo>
 #include <QUrl>
 #include <QFileDialog>
+#include <QFileSystemModel>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -15,38 +16,28 @@ MainWindow::MainWindow(QWidget *parent) :
     no_directory_message(new QErrorMessage(this))
 {
     ui->setupUi(this);
-    SameFilesModel* model = new SameFilesModel();
-    ui->treeView->setModel(model);
-    //ui->treeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents); // looks ugly
-    //ui->treeView->header()->setStretchLastSection(false);
-    connect(model, &SameFilesModel::scan_ended, this, &MainWindow::set_progress_complete);
-    connect(model, &SameFilesModel::scan_update, this, &MainWindow::set_progress_update);
-    connect(this, &MainWindow::scan_directory, model, &SameFilesModel::start_scan);
-    connect(this, &MainWindow::abort_scan, model, &SameFilesModel::stop_scan);
-    connect(this, &MainWindow::delete_file, model, &SameFilesModel::delete_file);
-    connect(this, &MainWindow::delete_same, model, &SameFilesModel::delete_same);
 
-    ui->treeView->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(ui->treeView, &QTreeView::customContextMenuRequested, this, &MainWindow::getContextMenu);
+    model = new FileIndexingModel(this);
+    connect(model, &FileIndexingModel::finishedIndexing, this, &MainWindow::set_progress_complete);
+    ui->view_not_found->setModel(model);
 
     ui->progressBar->reset();
 
     total_label = new QLabel(statusBar());
     statusBar()->addWidget(total_label);
 
-    connect(ui->btn_start, &QPushButton::clicked, this, &MainWindow::click_start);
-    connect(ui->lineEdit, &QLineEdit::returnPressed, this, &MainWindow::click_start);
-    connect(ui->btn_stop, &QPushButton::clicked, this, &MainWindow::click_stop);
+    connect(ui->btn_start, &QPushButton::clicked, this, &MainWindow::click_start_index);
+    connect(ui->lineEdit_dir, &QLineEdit::returnPressed, this, &MainWindow::click_start_index);
+    connect(ui->btn_stop_index, &QPushButton::clicked, this, &MainWindow::click_stop_index);
 
-    ui->btn_dir_dialog->setIcon(QIcon::fromTheme("document-open"));
     connect(ui->btn_dir_dialog, &QPushButton::clicked, this, [this](){
         QString tmp = QFileDialog::getExistingDirectory(this, "Directory to scan");
-        this->ui->lineEdit->setText(tmp);
+        this->ui->lineEdit_dir->setText(tmp);
     });
 
-    ui->btn_stop->setEnabled(false);
+    ui->btn_stop_index->setEnabled(false);
 
-    ui->lineEdit->setText(QDir::currentPath());
+    ui->lineEdit_dir->setText(QDir::currentPath());
 }
 
 MainWindow::~MainWindow()
@@ -56,20 +47,21 @@ MainWindow::~MainWindow()
 
 void MainWindow::enable_buttons(bool state) {
     ui->btn_start->setEnabled(state);
-    ui->lineEdit->setEnabled(state);
+    ui->lineEdit_dir->setEnabled(state);
     ui->btn_dir_dialog->setEnabled(state);
 
-    ui->btn_stop->setEnabled(!state);
+    ui->btn_stop_index->setEnabled(!state);
 }
 
-void MainWindow::set_progress_complete(int count) {
+void MainWindow::set_progress_complete() {
     ui->progressBar->setMinimum(0);
     ui->progressBar->setMaximum(1);
     ui->progressBar->setValue(1);
 
     enable_buttons(true);
 
-    total_label->setText("Files scanned: " + QString::number(count));
+    //TODO
+    //total_label->setText("Files scanned: " + QString::number(count));
 
     isScanning = false;
 }
@@ -78,8 +70,8 @@ void MainWindow::set_progress_update(int count) {
     total_label->setText("Files scanned: " + QString::number(count));
 }
 
-void MainWindow::click_start() {
-    QString dir = ui->lineEdit->text();
+void MainWindow::click_start_index() {
+    QString dir = ui->lineEdit_dir->text();
 
     if (QDir(dir).exists()) {
         ui->progressBar->setMinimum(0);
@@ -88,15 +80,16 @@ void MainWindow::click_start() {
         total_label->setText("Files scanned: 0");
         enable_buttons(false);
 
-        emit scan_directory(ui->lineEdit->text());
+        model->setDir(ui->lineEdit_dir->text());
         isScanning = true;
     } else {
         no_directory_message->showMessage("No such directory");
     }
 }
 
-void MainWindow::click_stop() {
-    emit abort_scan();
+void MainWindow::click_stop_index() {
+    model->stopIndexing();
+
     ui->progressBar->setMaximum(1); // otherwise reset won't work
     ui->progressBar->reset();
 
@@ -105,14 +98,22 @@ void MainWindow::click_stop() {
     isScanning = false;
 }
 
-void MainWindow::getContextMenu(QPoint const& pos) {
-    QModelIndex index = ui->treeView->indexAt(pos);
+void MainWindow::click_start_search() {
+    //TODO
+}
+
+void MainWindow::click_stop_search() {
+    //TODO
+}
+
+void MainWindow::getContextMenu(QPoint const& pos) {/*
+    QModelIndex index = ui->view_found->indexAt(pos);
     Node* ptr = static_cast<Node*>(index.internalPointer());
     if (!ptr->isFile) { return; }
 
     QString filename = ptr->name;
 
-    QMenu* menu = new QMenu(ui->treeView);
+    QMenu* menu = new QMenu(ui->view_found);
     QAction* act_open = menu->addAction("Open file");
     connect(act_open, &QAction::triggered, this, [filename](){
         QDesktopServices::openUrl(QUrl(filename));
@@ -140,5 +141,5 @@ void MainWindow::getContextMenu(QPoint const& pos) {
         act_delete_same->setEnabled(false);
     }
 
-    menu->exec(ui->treeView->mapToGlobal(pos));
+    menu->exec(ui->view_found->mapToGlobal(pos));*/
 }

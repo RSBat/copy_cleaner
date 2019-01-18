@@ -1,6 +1,6 @@
 #-------------------------------------------------
 #
-# Project created by QtCreator 2018-12-04T12:37:28
+# Project created by QtCreator 2018-12-22T04:49:13
 #
 #-------------------------------------------------
 
@@ -8,7 +8,7 @@ QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-TARGET = fileCleaner
+TARGET = fileFinder
 TEMPLATE = app
 
 # The following define makes your compiler emit warnings if you use
@@ -27,13 +27,15 @@ CONFIG += c++11
 SOURCES += \
         main.cpp \
         mainwindow.cpp \
-    samefilesmodel.cpp \
-    hashingworker.cpp
+    fileindexingmodel.cpp \
+    indexingworker.cpp \
+    searchingworker.cpp
 
 HEADERS += \
         mainwindow.h \
-    samefilesmodel.h \
-    hashingworker.h
+    fileindexingmodel.h \
+    indexingworker.h \
+    searchingworker.h
 
 FORMS += \
         mainwindow.ui

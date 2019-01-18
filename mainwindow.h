@@ -1,6 +1,8 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <fileindexingmodel.h>
+
 #include <QMainWindow>
 #include <QLabel>
 #include <QErrorMessage>
@@ -18,23 +20,21 @@ public:
     ~MainWindow();
 
 public slots:
-    void set_progress_complete(int count);
+    void set_progress_complete();
     void set_progress_update(int count);
-    void click_start();
-    void click_stop();
+    void click_start_index();
+    void click_stop_index();
+    void click_start_search();
+    void click_stop_search();
     void getContextMenu(QPoint const& pos);
-
-signals:
-    void scan_directory(QString const& directory);
-    void abort_scan();
-    void delete_file(QModelIndex const& index);
-    void delete_same(QModelIndex const& index);
 
 private:
     bool isScanning;
     Ui::MainWindow *ui;
     QLabel* total_label;
     QErrorMessage* no_directory_message;
+
+    FileIndexingModel* model;
 
     void enable_buttons(bool state);
 };
