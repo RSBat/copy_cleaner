@@ -8,6 +8,7 @@
 #include <QUrl>
 #include <QFileDialog>
 #include <QFileSystemModel>
+#include <QSortFilterProxyModel>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -17,16 +18,40 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    // base model
     model = new FileIndexingModel(this);
     connect(model, &FileIndexingModel::finishedIndexing, this, &MainWindow::set_progress_complete);
     connect(model, &FileIndexingModel::finishedSearching, this, &MainWindow::set_progress_complete);
-    ui->view_not_found->setModel(model);
 
+    // filters
+    QSortFilterProxyModel *proxyFound = new QSortFilterProxyModel(this);
+    proxyFound->setSourceModel(model);
+    proxyFound->setFilterFixedString("Found");
+    proxyFound->setFilterKeyColumn(1);
+    ui->view_found->setModel(proxyFound);
+    ui->view_found->header()->hideSection(1);
+
+    QSortFilterProxyModel *proxyNotFound = new QSortFilterProxyModel(this);
+    proxyNotFound->setSourceModel(model);
+    proxyNotFound->setFilterFixedString("Not found");
+    proxyNotFound->setFilterKeyColumn(1);
+    ui->view_not_found->setModel(proxyNotFound);
+    ui->view_not_found->header()->hideSection(1);
+
+    QSortFilterProxyModel *proxyNotIndexed = new QSortFilterProxyModel(this);
+    proxyNotIndexed->setSourceModel(model);
+    proxyNotIndexed->setFilterFixedString("Not indexed");
+    proxyNotIndexed->setFilterKeyColumn(1);
+    ui->view_not_indexed->setModel(proxyNotIndexed);
+    ui->view_not_indexed->header()->hideSection(1);
+
+    // progress bar and stuff
     ui->progressBar->reset();
 
     total_label = new QLabel(statusBar());
     statusBar()->addWidget(total_label);
 
+    // buttons and input
     connect(ui->btn_start, &QPushButton::clicked, this, &MainWindow::click_start_index);
     connect(ui->lineEdit_dir, &QLineEdit::returnPressed, this, &MainWindow::click_start_index);
     connect(ui->btn_stop_index, &QPushButton::clicked, this, &MainWindow::click_stop_index);
@@ -40,7 +65,9 @@ MainWindow::MainWindow(QWidget *parent) :
         this->ui->lineEdit_dir->setText(tmp);
     });
 
-    ui->btn_stop_index->setEnabled(false);
+    // hack!
+    enable_buttons(ModelStatus::IDLE);
+    ui->btn_search->setEnabled(false);
 
     ui->lineEdit_dir->setText(QDir::currentPath());
 }
