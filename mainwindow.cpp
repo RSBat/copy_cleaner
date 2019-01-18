@@ -9,6 +9,7 @@
 #include <QFileDialog>
 #include <QFileSystemModel>
 #include <QSortFilterProxyModel>
+#include <QHeaderView>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -29,21 +30,21 @@ MainWindow::MainWindow(QWidget *parent) :
     proxyFound->setFilterFixedString("Found");
     proxyFound->setFilterKeyColumn(1);
     ui->view_found->setModel(proxyFound);
-    ui->view_found->header()->hideSection(1);
+    ui->view_found->header()->hide();
 
     QSortFilterProxyModel *proxyNotFound = new QSortFilterProxyModel(this);
     proxyNotFound->setSourceModel(model);
     proxyNotFound->setFilterFixedString("Not found");
     proxyNotFound->setFilterKeyColumn(1);
     ui->view_not_found->setModel(proxyNotFound);
-    ui->view_not_found->header()->hideSection(1);
+    ui->view_not_found->header()->hide();
 
     QSortFilterProxyModel *proxyNotIndexed = new QSortFilterProxyModel(this);
     proxyNotIndexed->setSourceModel(model);
     proxyNotIndexed->setFilterFixedString("Not indexed");
     proxyNotIndexed->setFilterKeyColumn(1);
     ui->view_not_indexed->setModel(proxyNotIndexed);
-    ui->view_not_indexed->header()->hideSection(1);
+    ui->view_not_indexed->header()->hide();
 
     // progress bar and stuff
     ui->progressBar->reset();

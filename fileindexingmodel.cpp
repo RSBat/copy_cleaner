@@ -57,7 +57,8 @@ QVariant FileIndexingModel::data(const QModelIndex &index, int role) const {
     }
 
     if (index.column() == 0) {
-        return files[index.row()].name;
+        auto name = files[index.row()].name;
+        return "." + name.right(name.size() - root_dir.size());
     } else {
         if (files[index.row()].indexed) {
             if (files[index.row()].found) {
@@ -77,6 +78,8 @@ void FileIndexingModel::setDir(QString dir) {
     beginResetModel();
     files.clear();
     endResetModel();
+
+    root_dir = dir;
 
     indexing_thread = new QThread();
     indexingWorker = new IndexingWorker();
