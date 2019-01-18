@@ -19,6 +19,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     model = new FileIndexingModel(this);
     connect(model, &FileIndexingModel::finishedIndexing, this, &MainWindow::set_progress_complete);
+    connect(model, &FileIndexingModel::finishedSearching, this, &MainWindow::set_progress_complete);
     ui->view_not_found->setModel(model);
 
     ui->progressBar->reset();
@@ -29,6 +30,10 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->btn_start, &QPushButton::clicked, this, &MainWindow::click_start_index);
     connect(ui->lineEdit_dir, &QLineEdit::returnPressed, this, &MainWindow::click_start_index);
     connect(ui->btn_stop_index, &QPushButton::clicked, this, &MainWindow::click_stop_index);
+
+    connect(ui->btn_search, &QPushButton::clicked, this, &MainWindow::click_start_search);
+    connect(ui->lineEdit_search, &QLineEdit::returnPressed, this, &MainWindow::click_start_search);
+    connect(ui->btn_stop_search, &QPushButton::clicked, this, &MainWindow::click_stop_search);
 
     connect(ui->btn_dir_dialog, &QPushButton::clicked, this, [this](){
         QString tmp = QFileDialog::getExistingDirectory(this, "Directory to scan");
@@ -45,12 +50,15 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::enable_buttons(bool state) {
+void MainWindow::enable_buttons(ModelStatus status) {
+    bool state = status == ModelStatus::IDLE;
     ui->btn_start->setEnabled(state);
     ui->lineEdit_dir->setEnabled(state);
     ui->btn_dir_dialog->setEnabled(state);
+    ui->btn_search->setEnabled(state);
 
-    ui->btn_stop_index->setEnabled(!state);
+    ui->btn_stop_index->setEnabled(status == ModelStatus::INDEXING);
+    ui->btn_stop_search->setEnabled(status == ModelStatus::SEARCHING);
 }
 
 void MainWindow::set_progress_complete() {
@@ -58,7 +66,7 @@ void MainWindow::set_progress_complete() {
     ui->progressBar->setMaximum(1);
     ui->progressBar->setValue(1);
 
-    enable_buttons(true);
+    enable_buttons(ModelStatus::IDLE);
 
     //TODO
     //total_label->setText("Files scanned: " + QString::number(count));
@@ -78,7 +86,7 @@ void MainWindow::click_start_index() {
         ui->progressBar->setMaximum(0);
 
         total_label->setText("Files scanned: 0");
-        enable_buttons(false);
+        enable_buttons(ModelStatus::INDEXING);
 
         model->setDir(ui->lineEdit_dir->text());
         isScanning = true;
@@ -93,17 +101,22 @@ void MainWindow::click_stop_index() {
     ui->progressBar->setMaximum(1); // otherwise reset won't work
     ui->progressBar->reset();
 
-    enable_buttons(true);
+    enable_buttons(ModelStatus::IDLE);
 
     isScanning = false;
 }
 
 void MainWindow::click_start_search() {
     //TODO
+    model->search(ui->lineEdit_search->text());
+
+    enable_buttons(ModelStatus::SEARCHING);
 }
 
 void MainWindow::click_stop_search() {
+    model->stopSearching();
     //TODO
+    enable_buttons(ModelStatus::IDLE);
 }
 
 void MainWindow::getContextMenu(QPoint const& pos) {/*

@@ -11,6 +11,11 @@ namespace Ui {
 class MainWindow;
 }
 
+enum class ModelStatus
+{
+    INDEXING, SEARCHING, IDLE
+};
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -36,7 +41,7 @@ private:
 
     FileIndexingModel* model;
 
-    void enable_buttons(bool state);
+    void enable_buttons(ModelStatus status);
 };
 
 #endif // MAINWINDOW_H

@@ -18,7 +18,7 @@ void IndexingWorker::watch(QString dir) {
 
         files.push_back(indexFile(name));
 
-        if (thread()->isInterruptionRequested()) { return; }
+        if (thread()->isInterruptionRequested()) { break; }
     }
 
     emit filesModified(files);
@@ -54,7 +54,7 @@ FileData IndexingWorker::indexFile(QString name) {
             trigrams.insert(trig);
 
             if (trigrams.size() > MAGIC_SIZE) { break; }
-            if (thread()->isInterruptionRequested()) { return FileData(); }
+            if (thread()->isInterruptionRequested()) { return FileData(name); }
         }
 
         if (trigrams.size() <= MAGIC_SIZE) {
