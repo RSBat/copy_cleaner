@@ -8,12 +8,10 @@
 #include <QUrl>
 #include <QFileDialog>
 #include <QFileSystemModel>
-#include <QSortFilterProxyModel>
 #include <QHeaderView>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
-    isScanning(false),
     ui(new Ui::MainWindow),
     no_directory_message(new QErrorMessage(this))
 {
@@ -25,26 +23,20 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(model, &FileIndexingModel::finishedSearching, this, &MainWindow::set_progress_complete);
 
     // filters
-    QSortFilterProxyModel *proxyFound = new QSortFilterProxyModel(this);
-    proxyFound->setSourceModel(model);
-    proxyFound->setFilterFixedString("Found");
-    proxyFound->setFilterKeyColumn(1);
+    QSortFilterProxyModel *proxyFound = makeProxy("Found");
     ui->view_found->setModel(proxyFound);
     ui->view_found->header()->hide();
+    ui->view_found->header()->hideSection(1);
 
-    QSortFilterProxyModel *proxyNotFound = new QSortFilterProxyModel(this);
-    proxyNotFound->setSourceModel(model);
-    proxyNotFound->setFilterFixedString("Not found");
-    proxyNotFound->setFilterKeyColumn(1);
+    QSortFilterProxyModel *proxyNotFound = makeProxy("Not found");
     ui->view_not_found->setModel(proxyNotFound);
     ui->view_not_found->header()->hide();
+    ui->view_not_found->header()->hideSection(1);
 
-    QSortFilterProxyModel *proxyNotIndexed = new QSortFilterProxyModel(this);
-    proxyNotIndexed->setSourceModel(model);
-    proxyNotIndexed->setFilterFixedString("Not indexed");
-    proxyNotIndexed->setFilterKeyColumn(1);
+    QSortFilterProxyModel *proxyNotIndexed = makeProxy("Not indexed");
     ui->view_not_indexed->setModel(proxyNotIndexed);
     ui->view_not_indexed->header()->hide();
+    ui->view_not_indexed->header()->hideSection(1);
 
     // progress bar and stuff
     ui->progressBar->reset();
@@ -67,7 +59,7 @@ MainWindow::MainWindow(QWidget *parent) :
     });
 
     // hack!
-    enable_buttons(ModelStatus::IDLE);
+    enableButtons(ModelStatus::IDLE);
     ui->btn_search->setEnabled(false);
 
     ui->lineEdit_dir->setText(QDir::currentPath());
@@ -78,12 +70,24 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::enable_buttons(ModelStatus status) {
-    bool state = status == ModelStatus::IDLE;
+QSortFilterProxyModel* MainWindow::makeProxy(QString filter) {
+    QSortFilterProxyModel *proxy = new QSortFilterProxyModel(this);
+    proxy->setSourceModel(model);
+    proxy->setFilterFixedString(filter);
+    proxy->setFilterKeyColumn(1);
+
+    return proxy;
+}
+
+void MainWindow::enableButtons(ModelStatus status) {
+    bool state = (status == ModelStatus::IDLE) || (status == ModelStatus::READY);
     ui->btn_start->setEnabled(state);
     ui->lineEdit_dir->setEnabled(state);
     ui->btn_dir_dialog->setEnabled(state);
-    ui->btn_search->setEnabled(state);
+
+    bool searchState = status == ModelStatus::READY;
+    ui->btn_search->setEnabled(searchState);
+    ui->lineEdit_search->setEnabled(searchState);
 
     ui->btn_stop_index->setEnabled(status == ModelStatus::INDEXING);
     ui->btn_stop_search->setEnabled(status == ModelStatus::SEARCHING);
@@ -94,12 +98,10 @@ void MainWindow::set_progress_complete() {
     ui->progressBar->setMaximum(1);
     ui->progressBar->setValue(1);
 
-    enable_buttons(ModelStatus::IDLE);
+    enableButtons(ModelStatus::READY);
 
     //TODO
     //total_label->setText("Files scanned: " + QString::number(count));
-
-    isScanning = false;
 }
 
 void MainWindow::set_progress_update(int count) {
@@ -114,12 +116,12 @@ void MainWindow::click_start_index() {
         ui->progressBar->setMaximum(0);
 
         total_label->setText("Files scanned: 0");
-        enable_buttons(ModelStatus::INDEXING);
+        enableButtons(ModelStatus::INDEXING);
 
         model->setDir(ui->lineEdit_dir->text());
-        isScanning = true;
     } else {
         no_directory_message->showMessage("No such directory");
+        enableButtons(ModelStatus::IDLE);
     }
 }
 
@@ -129,22 +131,25 @@ void MainWindow::click_stop_index() {
     ui->progressBar->setMaximum(1); // otherwise reset won't work
     ui->progressBar->reset();
 
-    enable_buttons(ModelStatus::IDLE);
-
-    isScanning = false;
+    enableButtons(ModelStatus::IDLE); // ready?
 }
 
 void MainWindow::click_start_search() {
-    //TODO
     model->search(ui->lineEdit_search->text());
 
-    enable_buttons(ModelStatus::SEARCHING);
+    ui->progressBar->setMinimum(0);
+    ui->progressBar->setMaximum(0);
+
+    enableButtons(ModelStatus::SEARCHING);
 }
 
 void MainWindow::click_stop_search() {
     model->stopSearching();
-    //TODO
-    enable_buttons(ModelStatus::IDLE);
+
+    ui->progressBar->setMaximum(1); // otherwise reset won't work
+    ui->progressBar->reset();
+
+    enableButtons(ModelStatus::READY);
 }
 
 void MainWindow::getContextMenu(QPoint const& pos) {/*

@@ -1,5 +1,7 @@
 #include "fileindexingmodel.h"
 
+#include <QFile>
+
 FileIndexingModel::FileIndexingModel(QObject *parent)
     : QAbstractListModel(parent), files(), root_dir(), query(), indexingWorker(nullptr), searchingWorker(nullptr), indexing_thread(nullptr), searching_thread(nullptr) {
     qRegisterMetaType<QVector<FileData>>();
@@ -112,6 +114,7 @@ void FileIndexingModel::search(QString query) {
     beginResetModel();
     for (auto& file: files) {
         file.found = false;
+        file.searched = false;
     }
     endResetModel();
 
@@ -147,6 +150,19 @@ void FileIndexingModel::add_files(QVector<FileData> data) {
         endResetModel();
     } else {
         auto file = data[0];
+
+        if (!QFile(file.name).exists()) {
+            for (int i = 0; i < files.size(); i++) {
+                if (files[i].name == file.name) {
+                    beginRemoveRows(QModelIndex(), i, i);
+                    files.erase(files.begin() + i);
+                    endRemoveRows();
+                    return;
+                }
+            }
+            return;
+        }
+
         for (int i = 0; i < files.size(); i++) {
             if (files[i].name == file.name) {
                 files[i] = file;

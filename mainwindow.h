@@ -6,6 +6,7 @@
 #include <QMainWindow>
 #include <QLabel>
 #include <QErrorMessage>
+#include <QSortFilterProxyModel>
 
 namespace Ui {
 class MainWindow;
@@ -13,7 +14,7 @@ class MainWindow;
 
 enum class ModelStatus
 {
-    INDEXING, SEARCHING, IDLE
+    INDEXING, SEARCHING, IDLE, READY
 };
 
 class MainWindow : public QMainWindow
@@ -34,14 +35,14 @@ public slots:
     void getContextMenu(QPoint const& pos);
 
 private:
-    bool isScanning;
     Ui::MainWindow *ui;
     QLabel* total_label;
     QErrorMessage* no_directory_message;
 
     FileIndexingModel* model;
 
-    void enable_buttons(ModelStatus status);
+    void enableButtons(ModelStatus status);
+    QSortFilterProxyModel* makeProxy(QString filter);
 };
 
 #endif // MAINWINDOW_H

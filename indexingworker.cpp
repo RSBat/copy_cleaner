@@ -11,28 +11,50 @@ IndexingWorker::IndexingWorker() : watcher() {
 }
 
 void IndexingWorker::watch(QString dir) {
+    connect(&watcher, &QFileSystemWatcher::fileChanged, this, &IndexingWorker::getModification);
+    connect(&watcher, &QFileSystemWatcher::directoryChanged, this, &IndexingWorker::getDirModification);
+
     QVector<FileData> files;
     QDirIterator iter(dir, QDir::Files | QDir::NoDotAndDotDot | QDir::NoSymLinks, QDirIterator::Subdirectories);
     while (iter.hasNext()) {
         auto name = iter.next();
 
         files.push_back(indexFile(name));
+        watcher.addPath(name);
+        watcher.addPath(QFileInfo(name).canonicalPath());
 
         if (thread()->isInterruptionRequested()) { break; }
     }
 
+    watcher.addPath(dir);
+
     emit filesModified(files);
     emit finishedIndexing();
-
-    watcher.addPath(dir);
 }
 
 void IndexingWorker::getModification(QString name) {
-    // check if file was deleted
+    watcher.addPath(name);
+
     QVector<FileData> files;
     files.push_back(indexFile(name));
 
     emit filesModified(files);
+}
+
+void IndexingWorker::getDirModification(QString dir) {
+    watcher.addPath(dir);
+
+    QDirIterator iter(dir, QDir::Files | QDir::NoDotAndDotDot | QDir::NoSymLinks, QDirIterator::NoIteratorFlags);
+    while (iter.hasNext()) {
+        auto name = iter.next();
+
+        if (watcher.addPath(name)) {
+            QVector<FileData> files;
+            files.push_back(indexFile(name));
+
+            emit filesModified(files);
+        }
+    }
 }
 
 FileData IndexingWorker::indexFile(QString name) {

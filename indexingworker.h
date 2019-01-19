@@ -10,10 +10,11 @@ struct FileData {
     QString name;
     bool indexed;
     bool found;
+    bool searched;
 
-    FileData() : trigrams(), name(), indexed(false), found(false) {}
-    explicit FileData(QString name) : trigrams(), name(name), indexed(false), found(false) {}
-    FileData(QString name, QSet<quint32> trigrams) : trigrams(trigrams), name(name), indexed(true), found(false) {}
+    FileData() : trigrams(), name(), indexed(false), found(false), searched(false) {}
+    explicit FileData(QString name) : trigrams(), name(name), indexed(false), found(false), searched(false) {}
+    FileData(QString name, QSet<quint32> trigrams) : trigrams(trigrams), name(name), indexed(true), found(false), searched(false) {}
 };
 
 Q_DECLARE_METATYPE(FileData);
@@ -39,6 +40,7 @@ private:
 
 private slots:
     void getModification(QString name);
+    void getDirModification(QString name);
 };
 
 #endif // INDEXINGWORKER_H

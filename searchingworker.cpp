@@ -24,6 +24,7 @@ void SearchingWorker::search(QString query, QVector<FileData> data) {
     }
 
     for (auto& fileData : data) {
+        fileData.searched = true;
         if (!fileData.indexed) { fileData.found = false; continue; }
         bool ok = true;
 
